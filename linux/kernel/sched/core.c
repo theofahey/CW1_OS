@@ -4648,9 +4648,28 @@ void sched_cgroup_fork(struct task_struct *p, struct kernel_clone_args *kargs)
 	__set_task_cpu(p, smp_processor_id());
 	if (p->sched_class->task_fork)
 		p->sched_class->task_fork(p);
+	if (p->policy == 9){
+		incrNice(p);
+	}
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 }
+void incrNice(struct task_struct *p){
 
+	raw_spin_lock(&p->pi_lock);
+	int oldPrio = p->prio;
+	int oldNice = PRIO_TO_NICE(oldPrio);
+	int newNice = oldNice++;
+	int newPrio = NICE_TO_PRIO(newNice);
+	if (newNice >= 20){
+		raw_spin_unlock(&p->pi_lock);
+		return;
+	}
+	p->static_prio = newPrio;
+	__setscheduler_prio(p, newPrio);
+	set_load_weight(p, TRUE);
+	raw_spin_unlock(&p->pi_lock);
+}
+}
 void sched_post_fork(struct task_struct *p)
 {
 	uclamp_post_fork(p);
